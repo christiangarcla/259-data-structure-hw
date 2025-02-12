@@ -2,10 +2,11 @@
 #For full credit, provide answers for at least 8/11 questions
 
 #List names of students collaborating with: 
+#Christian Garcia
 
 ### SETUP: RUN THIS BEFORE STARTING ----------
 
-install.packages("rvest")
+#install.packages("rvest")
 
 #Load packages
 library(tidyverse)
@@ -38,8 +39,12 @@ load("rs_data.RData")
 # Why did some of the artist-song fail to match up?
 
 #ANSWER
+rs_joined_orig <- full_join(rs_old, rs_new, by = c("Artist", "Song"))
+nrow(rs_joined_orig)
 
-
+#Looking at the viewer it appears that there are separate columns
+#for rank and year so there are rows that have NA values for those extra columns
+#since those songs don't appear on both lists those values appear as missing
 
 ### Question 2 ---------- 
 
@@ -50,7 +55,15 @@ load("rs_data.RData")
 # Make Rank and Year into integer variables for rs_old before binding them into rs_all
 
 #ANSWER
+rs_new <- rs_new %>% mutate(Source = "New")
+rs_old <- rs_old %>% mutate(Source = "Old")
 
+rs_old$Rank <- as.integer(rs_old$Rank)
+rs_old$Year <- as.integer(rs_old$Year)
+
+str(rs_old)
+
+rs_all <- bind_rows(rs_new, rs_old)
 
 ### Question 3 ----------
 
@@ -62,7 +75,11 @@ load("rs_data.RData")
 # Use both functions to make all artists/song lowercase and remove any extra spaces
 
 #ANSWER
+rs_all$artist_cleaned <- rs_all %>%  mutate(artist_cleaned = str_remove_all(Artist, "\\bThe\\b"))
+rs_all %>% mutate(song_cleaned = str_remove_all(Song, "\\bThe\\b"))
 
+rs_all %>% mutate(artist_cleaned = str_replace_all(artist_clean, "[&]", "\\band\\b"))
+rs_all %>% mutate(song_cleaned = str_replace_all(song_clean, "[&]", "\\band\\b"))
 
 ### Question 4 ----------
 
