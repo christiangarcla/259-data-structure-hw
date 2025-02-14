@@ -75,11 +75,21 @@ rs_all <- bind_rows(rs_new, rs_old)
 # Use both functions to make all artists/song lowercase and remove any extra spaces
 
 #ANSWER
-rs_all$artist_cleaned <- rs_all %>%  mutate(artist_cleaned = str_remove_all(Artist, "\\bThe\\b"))
-rs_all %>% mutate(song_cleaned = str_remove_all(Song, "\\bThe\\b"))
+#removing the word "the" from artist and song columns
+rs_all <- rs_all %>% mutate(Artist = str_remove_all(Artist, "The "))
+rs_all <- rs_all %>% mutate(Song = str_remove_all(Song, "The "))
 
-rs_all %>% mutate(artist_cleaned = str_replace_all(artist_clean, "[&]", "\\band\\b"))
-rs_all %>% mutate(song_cleaned = str_replace_all(song_clean, "[&]", "\\band\\b"))
+#replacing the ampersand symbol with the full word in both columns
+rs_all <- rs_all %>% mutate(Artist = str_replace_all(Artist, "&", "and"))
+rs_all <- rs_all %>% mutate(Song = str_replace_all(Song, "&", "and"))
+
+#removing punctuation from artist and song columns
+rs_all <- rs_all %>% mutate(Artist = str_remove_all(Artist, "[:punct:]"))
+rs_all <- rs_all %>% mutate(Song = str_remove_all(Song, "[:punct:]"))
+
+#transforming to lowercase and removing spaces
+rs_all <- rs_all %>%  mutate(Artist = str_to_lower(str_trim(Artist)))
+rs_all <- rs_all %>%  mutate(Song = str_to_lower(str_trim(Song)))
 
 ### Question 4 ----------
 
@@ -92,7 +102,19 @@ rs_all %>% mutate(song_cleaned = str_replace_all(song_clean, "[&]", "\\band\\b")
 # in the new rs_joined compared to the original. Use nrow to check (there should be 799 rows)
 
 #ANSWER
+#this way can cause issues
+rs_new_cleaned <- rs_all[1:500,]
+rs_old_cleaned <- rs_all[500:1000,]
 
+#better way of doing it
+rs_new_cleaned <- rs_all %>% filter(Source == "New")
+rs_old_cleaned <- rs_all %>% filter(Source == "Old")
+
+nrow(rs_new_cleaned)
+nrow(rs_old_cleaned)
+
+rs_joined <- full_join(rs_new_cleaned, rs_old_cleaned, by = c("Artist", "Song"), suffix = c("_Old", "_New"))
+nrow(rs_joined)
 
 ### Question 5 ----------
 
@@ -105,7 +127,17 @@ rs_all %>% mutate(song_cleaned = str_replace_all(song_clean, "[&]", "\\band\\b")
 # You should now be able to see how each song moved up/down in rankings between the two lists
 
 #ANSWER
+rs_joined <- rs_joined %>% select(-Source_Old, -Source_New) 
 
+#this should work for either
+rs_joined <- rs_joined %>% filter(!is.na(Rank_New)) 
+rs_joined <- rs_joined %>% filter(!is.na(Rank_Old)) 
+
+#creation of rank changed variable
+rs_joined <- rs_joined %>% mutate(Rank_Change = Rank_New - Rank_Old) 
+
+#arranging by change
+rs_joined <- rs_joined %>% arrange(Rank_Change)
 
 ### Question 6 ----------
 
@@ -116,8 +148,9 @@ rs_all %>% mutate(song_cleaned = str_replace_all(song_clean, "[&]", "\\band\\b")
 # Which decade improved the most?
 
 #ANSWER
+rs_joined <- rs_joined %>% mutate(decade = floor(Year_New/10)*10, decade = factor(paste0(decade, "s")))
 
-
+rs_joined %>% group_by(decade) %>% summarize(m_change = mean(Rank_Change))
 
 ### Question 7 ----------
 
@@ -127,8 +160,10 @@ rs_all %>% mutate(song_cleaned = str_replace_all(song_clean, "[&]", "\\band\\b")
 # proportion of songs in each of the top three decades (vs. all the rest)
 
 #ANSWER
-
-
+#my use of factor count after lumping keeps breaking or generating incorrcet counts
+fct_count(rs_joined$decade)
+rs_joined %>% mutate(decade = fct_lump(decade, n = 3))
+fct_count(rs_joined$decade)
 
 ### Question 8 ---------- 
 
@@ -137,7 +172,12 @@ rs_all %>% mutate(song_cleaned = str_replace_all(song_clean, "[&]", "\\band\\b")
 # Use parse_date_time to fix it
 
 #ANSWER
+top20 <- read_csv("top_20.csv")
 
+str(top20)
+
+top20 %>% mutate(release_parsed = ymd(Release)) 
+top20 %>% mutate(release_parsed = parse_date(Release, format = "%m%.%d%.%Y")) 
 
 ### Question 9 --------
 
@@ -146,8 +186,10 @@ rs_all %>% mutate(song_cleaned = str_replace_all(song_clean, "[&]", "\\band\\b")
 # overwrite top20 with the pivoted data (there should now be 20 rows!)
 
 #ANSWER
-
-
+#I need to retain the other variables haha but it worked i have 20 now
+top20 <- top20 %>% pivot_wider(id_cols = "Song", 
+                         names_from = "Style", 
+                         values_from = "Value")
 
 ### Question 10 ---------
 
